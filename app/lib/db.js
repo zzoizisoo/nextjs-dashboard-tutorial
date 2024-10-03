@@ -1,0 +1,56 @@
+import { MongoClient, ServerApiVersion } from "mongodb";
+
+// 커넥션의 생애주기는 어케되는거지? 단일 요청에 대해 매번 연결?
+// 매 요청마다 connect 후에 쿼리? 
+class NextMongoClient extends MongoClient {
+	constructor() {
+		super(process.env.MONGODB_URI, {
+			serverApi: {
+				version: ServerApiVersion.v1,
+				strict: true,
+				deprecationErrors: true,
+			},
+		});
+		this.DB_NAME = "nextjs-dashboard-tutorial";
+		this.COLLECTIONS = {
+			users: "users",
+			customers: "customers",
+			invoices: "invoices",
+			revenue: "revenue",
+		};
+		this.run().catch(console.dir);
+	}
+
+	async run() {
+		try {
+			// Connect the client to the server (optional starting in v4.7)
+			await this.connect();
+			// Send a ping to confirm a successful connection
+			await this.db("admin").command({ ping: 1 });
+			console.log(
+				"Pinged your deployment. You successfully connected to MongoDB!"
+			);
+		} finally {
+			// Ensures that the client will close when you finish/error
+			await this.close();
+		}
+	}
+
+	get usersCollection() {
+		return this.db(this.DB_NAME).collection(this.COLLECTIONS.users);
+	}
+
+	get customersCollection() {
+		return this.db(this.DB_NAME).collection(this.COLLECTIONS.customers);
+	}
+
+	get invoicesCollection() {
+		return this.db(this.DB_NAME).collection(this.COLLECTIONS.invoices);
+	}
+
+	get revenueCollection() {
+		return this.db(this.DB_NAME).collection(this.COLLECTIONS.revenue);
+	}
+}
+
+export default new NextMongoClient();
