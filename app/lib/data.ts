@@ -1,4 +1,4 @@
-import { sql } from "@vercel/postgres";
+// import { sql } from "@vercel/postgres";
 import {
 	CustomerField,
 	CustomersTableType,
@@ -17,6 +17,8 @@ export async function fetchRevenue() {
 		const collection = client
 			.db("nextjs-dashboard-tutorial")
 			.collection("revenue");
+
+		await new Promise((resolve) => setTimeout(resolve, 4000))
 		const data = await collection.find({}).toArray();
 		return data;
 	} catch (error) {
@@ -25,7 +27,6 @@ export async function fetchRevenue() {
 	}
 }
 
-// TODOS: Join with customer data and get profileImg and mail address
 export async function fetchLatestInvoices() {
 	try {
 		const client = await clientPromise;
@@ -34,6 +35,7 @@ export async function fetchLatestInvoices() {
 			.collection("invoices");
 		// const data = await collection.find({},{limit:5, sort: {_id: -1}}).toArray()
 
+		
 		const data = await collection
 			.aggregate([
 				{ $sort: { date: -1 } },
@@ -57,6 +59,7 @@ export async function fetchLatestInvoices() {
 				},
 			])
 			.toArray();
+		await new Promise((resolve) => setTimeout(resolve, 3000))
 		const latestInvoices = data.map((invoice) => ({
 			...invoice,
 			amount: formatCurrency(invoice.amount),
@@ -127,31 +130,83 @@ export async function fetchFilteredInvoices(
 	query: string,
 	currentPage: number
 ) {
+	const client = await clientPromise;
+	const db = client.db('nextjs-dashboard-tutorial')
+	const collection = { 
+		invoices: db.collection("invoices"),
+		customers: db.collection("customers"),
+	}
 	const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-	try {
-		const invoices = await sql<InvoicesTable>`
-      SELECT
-        invoices.id,
-        invoices.amount,
-        invoices.date,
-        invoices.status,
-        customers.name,
-        customers.email,
-        customers.image_url
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
-      WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
-      ORDER BY invoices.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `;
+	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
 
-		return invoices.rows;
+	try {
+		const invoices = collection.invoices.aggregate([
+			{
+				$lookup: {
+					from: "customers",
+					localField: "customer_id",
+					foreignField: "_id",
+					as: "customer"
+				}
+			},
+			{
+				$unwind: "$customer"
+			},
+			{
+				$match: { 
+					$or: [
+						{"customer.name": {$regex: safeQuery, $options: "i"}},
+						{"customer.email": {$regex: safeQuery, $options: "i"}},
+						{"amount": {$regex: safeQuery, $options: "i"}},
+						{"date": {$regex: safeQuery, $options: "i"}},
+						{"status": {$regex: safeQuery, $options: "i"}},
+					]
+				}
+			},
+			{
+				$sort: {"date": -1}
+			},
+			{
+				$skip: offset
+			},
+			{
+				$limit: ITEMS_PER_PAGE
+			},
+			{ 
+				$project: { 
+					amount: 1, 
+					date: 1, 
+					status: 1, 
+					"customer.name": 1,
+					"customer.email": 1,
+					"customer.image_url": 1
+				}
+			}
+		])
+
+	// 	const invoices = await sql<InvoicesTable>`
+    //   SELECT
+    //     invoices.id,
+    //     invoices.amount,
+    //     invoices.date,
+    //     invoices.status,
+    //     customers.name,
+    //     customers.email,
+    //     customers.image_url
+    //   FROM invoices
+    //   JOIN customers ON invoices.customer_id = customers.id
+    //   WHERE
+    //     customers.name ILIKE ${`%${query}%`} OR
+    //     customers.email ILIKE ${`%${query}%`} OR
+    //     invoices.amount::text ILIKE ${`%${query}%`} OR
+    //     invoices.date::text ILIKE ${`%${query}%`} OR
+    //     invoices.status ILIKE ${`%${query}%`}
+    //   ORDER BY invoices.date DESC
+    //   LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    // `;
+
+		return invoices.toArray();
 	} catch (error) {
 		console.error("Database Error:", error);
 		throw new Error("Failed to fetch invoices.");
