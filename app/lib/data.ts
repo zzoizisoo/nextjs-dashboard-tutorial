@@ -1,4 +1,5 @@
 // import { sql } from "@vercel/postgres";
+import { ObjectId } from "mongodb";
 import {
 	CustomerField,
 	CustomersTableType,
@@ -38,7 +39,7 @@ export async function fetchLatestInvoices() {
 		
 		const data = await collection
 			.aggregate([
-				{ $sort: { date: -1 } },
+				{ $sort: { _id: -1 } },
 				{ $limit: 5 },
 				{
 					$lookup: {
@@ -165,7 +166,7 @@ export async function fetchFilteredInvoices(
 				}
 			},
 			{
-				$sort: {"date": -1}
+				$sort: {"_id": -1}
 			},
 			{
 				$skip: offset
@@ -227,8 +228,9 @@ export async function fetchInvoicesPages(query: string) {
 				$count: "total"
 			},
 		]).toArray()
+		console.log(count[0])
 
-		const totalPages = Math.ceil(Number(count[0].total) / ITEMS_PER_PAGE);
+		const totalPages = count[0]? Math.ceil(Number(count[0].total) / ITEMS_PER_PAGE):0;
 		return totalPages;
 	} catch (error) {
 		console.error("Database Error:", error);
@@ -238,23 +240,16 @@ export async function fetchInvoicesPages(query: string) {
 
 export async function fetchInvoiceById(id: string) {
 	try {
-		const data = await sql<InvoiceForm>`
-      SELECT
-        invoices.id,
-        invoices.customer_id,
-        invoices.amount,
-        invoices.status
-      FROM invoices
-      WHERE invoices.id = ${id};
-    `;
+		const client = await clientPromise;
+		const collection = client.db('nextjs-dashboard-tutorial').collection("invoices")
 
-		const invoice = data.rows.map((invoice) => ({
-			...invoice,
-			// Convert amount from cents to dollars
-			amount: invoice.amount / 100,
-		}));
+		const data = await collection.findOne({_id: new ObjectId(id)})
 
-		return invoice[0];
+		const invoice = {
+			...data, 
+			amount: data?.amount / 100
+		}
+		return invoice;
 	} catch (error) {
 		console.error("Database Error:", error);
 		throw new Error("Failed to fetch invoice.");
@@ -262,16 +257,13 @@ export async function fetchInvoiceById(id: string) {
 }
 
 export async function fetchCustomers() {
+	
 	try {
-		const data = await sql<CustomerField>`
-      SELECT
-        id,
-        name
-      FROM customers
-      ORDER BY name ASC
-    `;
+		const client = await clientPromise;
+		const collection = client.db('nextjs-dashboard-tutorial').collection("customers")
+		const data = collection.find({}).project({_id: 1, name: 1}).sort({name: 1})
 
-		const customers = data.rows;
+		const customers = await data.toArray();
 		return customers;
 	} catch (err) {
 		console.error("Database Error:", err);
