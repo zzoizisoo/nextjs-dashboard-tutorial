@@ -192,19 +192,43 @@ export async function fetchFilteredInvoices(
 }
 
 export async function fetchInvoicesPages(query: string) {
-	try {
-		const count = await sql`SELECT COUNT(*)
-    FROM invoices
-    JOIN customers ON invoices.customer_id = customers.id
-    WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
+	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const client = await clientPromise;
+	const collection = { 
+		invoices: client.db('nextjs-dashboard-tutorial').collection("invoices"),
+		customers: client.db('nextjs-dashboard-tutorial').collection("customers"),
+	}
 
-		const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+	try {
+		const count = await collection.invoices.aggregate([
+			{
+				$lookup:{ 
+					from: "customers",
+					localField: "customer_id",
+					foreignField: "_id",
+					as: "customer"
+				},
+			}, 
+			{
+				$unwind: "$customer"
+			},
+			{
+				$match:{ 
+					$or: [
+						{ "customer.email": {$regex: safeQuery, $options: "i"}},
+						{ "customer.name": {$regex: safeQuery, $options: "i"}},
+						{ "amount": {$regex: safeQuery, $options: "i"}},
+						{ "status": {$regex: safeQuery, $options: "i"}},
+						{ "date": {$regex: safeQuery, $options: "i"}},
+					]
+				}
+			},
+			{
+				$count: "total"
+			},
+		]).toArray()
+
+		const totalPages = Math.ceil(Number(count[0].total) / ITEMS_PER_PAGE);
 		return totalPages;
 	} catch (error) {
 		console.error("Database Error:", error);
