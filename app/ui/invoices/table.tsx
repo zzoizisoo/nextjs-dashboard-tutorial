@@ -12,12 +12,13 @@ export default async function InvoicesTable({
   currentPage: number;
 }) {
   const invoices = await fetchFilteredInvoices(query, currentPage);
+
   return (
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
         <div className="rounded-lg bg-gray-50 p-2 md:pt-0">
           <div className="md:hidden">
-            {invoices?.map((invoice) => (
+            {invoices?.map((invoice, i) => (
               <div
                 key={invoice._id}
                 className="mb-2 w-full rounded-md bg-white p-4"
@@ -26,7 +27,6 @@ export default async function InvoicesTable({
                   <div>
                     <div className="mb-2 flex items-center">
                       <Image
-                        // src="/customers/lee-robinson.png"
                         src={invoice.customer.image_url}
                         className="mr-2 rounded-full"
                         width={28}
@@ -47,8 +47,8 @@ export default async function InvoicesTable({
                     <p>{formatDateToLocal(invoice.date)}</p>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <UpdateInvoice id={invoice._id} />
-                    <DeleteInvoice id={invoice._id} />
+                    <UpdateInvoice id={invoice._id.toString()} />
+                    <DeleteInvoice id={invoice._id.toString()} />
                   </div>
                 </div>
               </div>
@@ -80,7 +80,7 @@ export default async function InvoicesTable({
             <tbody className="bg-white">
               {invoices?.map((invoice) => (
                 <tr
-                  key={invoice.id}
+                  key={invoice._id}
                   className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
                 >
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
@@ -109,8 +109,8 @@ export default async function InvoicesTable({
                   </td>
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
                     <div className="flex justify-end gap-3">
-                      <UpdateInvoice id={invoice._id} />
-                      <DeleteInvoice id={invoice._id} />
+                      <UpdateInvoice id={invoice._id.toString()} />
+                      <DeleteInvoice id={invoice._id.toString()} />
                     </div>
                   </td>
                 </tr>

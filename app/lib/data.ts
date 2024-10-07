@@ -19,7 +19,7 @@ export async function fetchRevenue() {
 			.db("nextjs-dashboard-tutorial")
 			.collection("revenue");
 
-		await new Promise((resolve) => setTimeout(resolve, 4000))
+		await new Promise((resolve) => setTimeout(resolve, 4000));
 		const data = await collection.find({}).toArray();
 		return data;
 	} catch (error) {
@@ -36,7 +36,6 @@ export async function fetchLatestInvoices() {
 			.collection("invoices");
 		// const data = await collection.find({},{limit:5, sort: {_id: -1}}).toArray()
 
-		
 		const data = await collection
 			.aggregate([
 				{ $sort: { _id: -1 } },
@@ -60,7 +59,7 @@ export async function fetchLatestInvoices() {
 				},
 			])
 			.toArray();
-		await new Promise((resolve) => setTimeout(resolve, 3000))
+		await new Promise((resolve) => setTimeout(resolve, 3000));
 		const latestInvoices = data.map((invoice) => ({
 			...invoice,
 			amount: formatCurrency(invoice.amount),
@@ -132,14 +131,14 @@ export async function fetchFilteredInvoices(
 	currentPage: number
 ) {
 	const client = await clientPromise;
-	const db = client.db('nextjs-dashboard-tutorial')
-	const collection = { 
+	const db = client.db("nextjs-dashboard-tutorial");
+	const collection = {
 		invoices: db.collection("invoices"),
 		customers: db.collection("customers"),
-	}
+	};
 	const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 	try {
 		const invoices = collection.invoices.aggregate([
@@ -148,43 +147,43 @@ export async function fetchFilteredInvoices(
 					from: "customers",
 					localField: "customer_id",
 					foreignField: "_id",
-					as: "customer"
-				}
+					as: "customer",
+				},
 			},
 			{
-				$unwind: "$customer"
+				$unwind: "$customer",
 			},
 			{
-				$match: { 
+				$match: {
 					$or: [
-						{"customer.name": {$regex: safeQuery, $options: "i"}},
-						{"customer.email": {$regex: safeQuery, $options: "i"}},
-						{"amount": {$regex: safeQuery, $options: "i"}},
-						{"date": {$regex: safeQuery, $options: "i"}},
-						{"status": {$regex: safeQuery, $options: "i"}},
-					]
-				}
+						{ "customer.name": { $regex: safeQuery, $options: "i" } },
+						{ "customer.email": { $regex: safeQuery, $options: "i" } },
+						{ amount: { $regex: safeQuery, $options: "i" } },
+						{ date: { $regex: safeQuery, $options: "i" } },
+						{ status: { $regex: safeQuery, $options: "i" } },
+					],
+				},
 			},
 			{
-				$sort: {"_id": -1}
+				$sort: { _id: -1 },
 			},
 			{
-				$skip: offset
+				$skip: offset,
 			},
 			{
-				$limit: ITEMS_PER_PAGE
+				$limit: ITEMS_PER_PAGE,
 			},
-			{ 
-				$project: { 
-					amount: 1, 
-					date: 1, 
-					status: 1, 
+			{
+				$project: {
+					amount: 1,
+					date: 1,
+					status: 1,
 					"customer.name": 1,
 					"customer.email": 1,
-					"customer.image_url": 1
-				}
-			}
-		])
+					"customer.image_url": 1,
+				},
+			},
+		]);
 		return invoices.toArray();
 	} catch (error) {
 		console.error("Database Error:", error);
@@ -193,44 +192,47 @@ export async function fetchFilteredInvoices(
 }
 
 export async function fetchInvoicesPages(query: string) {
-	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const client = await clientPromise;
-	const collection = { 
-		invoices: client.db('nextjs-dashboard-tutorial').collection("invoices"),
-		customers: client.db('nextjs-dashboard-tutorial').collection("customers"),
-	}
+	const collection = {
+		invoices: client.db("nextjs-dashboard-tutorial").collection("invoices"),
+		customers: client.db("nextjs-dashboard-tutorial").collection("customers"),
+	};
 
 	try {
-		const count = await collection.invoices.aggregate([
-			{
-				$lookup:{ 
-					from: "customers",
-					localField: "customer_id",
-					foreignField: "_id",
-					as: "customer"
+		const count = await collection.invoices
+			.aggregate([
+				{
+					$lookup: {
+						from: "customers",
+						localField: "customer_id",
+						foreignField: "_id",
+						as: "customer",
+					},
 				},
-			}, 
-			{
-				$unwind: "$customer"
-			},
-			{
-				$match:{ 
-					$or: [
-						{ "customer.email": {$regex: safeQuery, $options: "i"}},
-						{ "customer.name": {$regex: safeQuery, $options: "i"}},
-						{ "amount": {$regex: safeQuery, $options: "i"}},
-						{ "status": {$regex: safeQuery, $options: "i"}},
-						{ "date": {$regex: safeQuery, $options: "i"}},
-					]
-				}
-			},
-			{
-				$count: "total"
-			},
-		]).toArray()
-		console.log(count[0])
-
-		const totalPages = count[0]? Math.ceil(Number(count[0].total) / ITEMS_PER_PAGE):0;
+				{
+					$unwind: "$customer",
+				},
+				{
+					$match: {
+						$or: [
+							{ "customer.email": { $regex: safeQuery, $options: "i" } },
+							{ "customer.name": { $regex: safeQuery, $options: "i" } },
+							{ amount: { $regex: safeQuery, $options: "i" } },
+							{ status: { $regex: safeQuery, $options: "i" } },
+							{ date: { $regex: safeQuery, $options: "i" } },
+						],
+					},
+				},
+				{
+					$count: "total",
+				},
+			])
+			.toArray();
+			
+		const totalPages = count[0]
+			? Math.ceil(Number(count[0].total) / ITEMS_PER_PAGE)
+			: 0;
 		return totalPages;
 	} catch (error) {
 		console.error("Database Error:", error);
@@ -241,14 +243,17 @@ export async function fetchInvoicesPages(query: string) {
 export async function fetchInvoiceById(id: string) {
 	try {
 		const client = await clientPromise;
-		const collection = client.db('nextjs-dashboard-tutorial').collection("invoices")
+		const collection = client
+			.db("nextjs-dashboard-tutorial")
+			.collection("invoices");
 
-		const data = await collection.findOne({_id: new ObjectId(id)})
-
-		const invoice = {
-			...data, 
-			amount: data?.amount / 100
-		}
+		const data = await collection.findOne({ _id: new ObjectId(id) });
+		const invoice = data
+			? {
+					...data,
+					amount: data.amount / 100,
+			  }
+			: {};
 		return invoice;
 	} catch (error) {
 		console.error("Database Error:", error);
@@ -257,11 +262,15 @@ export async function fetchInvoiceById(id: string) {
 }
 
 export async function fetchCustomers() {
-	
 	try {
 		const client = await clientPromise;
-		const collection = client.db('nextjs-dashboard-tutorial').collection("customers")
-		const data = collection.find({}).project({_id: 1, name: 1}).sort({name: 1})
+		const collection = client
+			.db("nextjs-dashboard-tutorial")
+			.collection("customers");
+		const data = collection
+			.find({})
+			.project({ _id: 1, name: 1 })
+			.sort({ name: 1 });
 
 		const customers = await data.toArray();
 		return customers;

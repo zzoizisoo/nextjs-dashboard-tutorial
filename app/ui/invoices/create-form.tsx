@@ -10,6 +10,7 @@ import { Button } from '@/app/ui/button';
 import { createInvoice } from '@/app/lib/actions';
 
 export default function Form({ customers }: { customers: CustomerField[] }) {
+  const _customers = JSON.parse(customers)
   return (
     <form action={createInvoice}>
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
@@ -28,8 +29,8 @@ export default function Form({ customers }: { customers: CustomerField[] }) {
               <option value="" disabled>
                 Select a customer
               </option>
-              {customers.map((customer) => (
-                <option key={customer._id} value={customer._id}>
+              {_customers.map((customer) => (
+                <option key={customer._id.toString()} value={customer._id.toString()}>
                   {customer.name}
                 </option>
               ))}
