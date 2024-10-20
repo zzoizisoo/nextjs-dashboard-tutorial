@@ -39,7 +39,6 @@ export async function fetchLatestInvoices() {
 		const data = await collection
 			.aggregate([
 				{ $sort: { _id: -1 } },
-				{ $limit: 5 },
 				{
 					$lookup: {
 						from: "customers",
@@ -57,8 +56,10 @@ export async function fetchLatestInvoices() {
 						image_url: "$customer_info.image_url",
 					},
 				},
+				{ $limit: 5 },
 			])
 			.toArray();
+			
 		await new Promise((resolve) => setTimeout(resolve, 3000));
 		const latestInvoices = data.map((invoice) => ({
 			...invoice,
